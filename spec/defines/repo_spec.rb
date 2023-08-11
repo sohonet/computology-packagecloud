@@ -55,8 +55,8 @@ describe 'packagecloud::repo' do
        "mode"=>"0644",})
     end
     it do
-      is_expected.to contain_file('username_publicrepo').with_content(/deb https:\/\/packagecloud.io\/username\/publicrepo\/debian  main/)
-      is_expected.to contain_file('username_publicrepo').with_content(/deb-src https:\/\/packagecloud.io\/username\/publicrepo\/debian  main/)
+      is_expected.to contain_file('username_publicrepo').with_content(/deb https:\/\/packagecloud.io\/username\/publicrepo\/debian jesse main/)
+      is_expected.to contain_file('username_publicrepo').with_content(/deb-src https:\/\/packagecloud.io\/username\/publicrepo\/debian jesse main/)
     end
     it do
       is_expected.to contain_exec('apt_get_update_username_publicrepo').
@@ -90,6 +90,7 @@ describe 'packagecloud::repo' do
         :osreleasemaj              => '7',
         :operatingsystem           => 'CentOS',
         :architecture              => 'x86_64',
+        :pygpgme_installed         => 'true'
       }}
 
 
@@ -122,6 +123,7 @@ describe 'packagecloud::repo' do
         :osreleasemaj              => '7',
         :operatingsystem           => 'CentOS',
         :architecture              => 'x86_64',
+        :pygpgme_installed         => 'true'
       }}
 
 
@@ -152,6 +154,7 @@ describe 'packagecloud::repo' do
         :osreleasemaj              => '8',
         :operatingsystem           => 'Debian',
         :architecture              => 'x86_64',
+        :lsbdistcodename           => 'jesse'
       }}
 
       let(:title) { 'username/publicrepo' }
@@ -180,6 +183,7 @@ describe 'packagecloud::repo' do
         :osreleasemaj              => '8',
         :operatingsystem           => 'Debian',
         :architecture              => 'x86_64',
+        :lsbdistcodename           => 'jesse'
       }}
 
       let(:title) { 'username/publicrepo' }
@@ -200,6 +204,69 @@ describe 'packagecloud::repo' do
       it do
         is_expected.to contain_exec('apt_get_update_username_publicrepo').
                with_refreshonly(true)
+      end
+    end
+
+    context 'with proxy host and port' do
+      let(:facts) {{
+        :osfamily                  => 'Debian',
+        :osreleasemaj              => '8',
+        :operatingsystem           => 'Debian',
+        :architecture              => 'x86_64',
+        :lsbdistcodename           => 'jesse'
+      }}
+
+      let(:title) { 'username/publicrepo' }
+
+      let(:params) do
+        {
+          :type       => 'deb',
+          :proxy_host => 'proxy.example.com',
+          :proxy_port => '8080'
+        }
+      end
+
+      it do
+        is_expected.to contain_exec('apt_key_add_username_publicrepo').
+          with(
+            {
+              "command" => 'wget --auth-no-challenge -qO - https://packagecloud.io/username/publicrepo/gpgkey | apt-key add -',
+              "path"    => "/usr/bin/:/bin/",
+              "require" => "File[username_publicrepo]",
+              "environment" => ["https_proxy=https://proxy.example.com:8080", "http_proxy=http://proxy.example.com:8080"]
+            }
+        )
+      end
+    end
+
+    context 'with proxy host' do
+      let(:facts) {{
+        :osfamily                  => 'Debian',
+        :osreleasemaj              => '8',
+        :operatingsystem           => 'Debian',
+        :architecture              => 'x86_64',
+        :lsbdistcodename           => 'jesse'
+      }}
+
+      let(:title) { 'username/publicrepo' }
+
+      let(:params) do
+        {
+          :type       => 'deb',
+          :proxy_host => 'proxy.example.com',
+        }
+      end
+
+      it do
+        is_expected.to contain_exec('apt_key_add_username_publicrepo').
+          with(
+            {
+              "command" => 'wget --auth-no-challenge -qO - https://packagecloud.io/username/publicrepo/gpgkey | apt-key add -',
+              "path"    => "/usr/bin/:/bin/",
+              "require" => "File[username_publicrepo]",
+              "environment" => ["https_proxy=https://proxy.example.com", "http_proxy=http://proxy.example.com"]
+            }
+        )
       end
     end
   end

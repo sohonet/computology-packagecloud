@@ -26,13 +26,15 @@ module Packagecloud
   class API
     attr_reader :name
 
-    def initialize(name, master_token, server_address, os, dist, hostname)
+    def initialize(name, master_token, server_address, os, dist, hostname, proxy_host, proxy_port)
       @name         = name
       @master_token = master_token
       @os           = os
       @dist         = dist
       @hostname     = hostname
       @base_url     = "https://packagecloud.io/install/repositories/"
+      @proxy_host   = proxy_host
+      @proxy_port   = proxy_port
 
       if !server_address.nil?
         @base_url = URI.join(server_address, "/install/repositories/").to_s
@@ -92,7 +94,12 @@ module Packagecloud
     end
 
     def http(scheme, host, port, request)
-      http = Net::HTTP.new(host, port)
+      if @proxy_host.nil?
+        http = Net::HTTP.new(host, port)
+      else
+        http = Net::HTTP.new(host, port, @proxy_host, @proxy_port)
+      end
+
       if scheme == "https"
         http.verify_mode = OpenSSL::SSL::VERIFY_PEER
         http.use_ssl = true
@@ -116,11 +123,13 @@ module Puppet::Parser::Functions
     repo = args[0]
     master_token = args[1]
     server_address = args[2]
+    proxy_host = args[3]
+    proxy_port = args[4]
 
     os = lookupvar('::operatingsystem').downcase
     dist = lookupvar('::operatingsystemrelease')
     hostname = lookupvar('::fqdn')
 
-    Packagecloud::API.new(repo, master_token, server_address, os, dist, hostname).read_token
+    Packagecloud::API.new(repo, master_token, server_address, os, dist, hostname, proxy_host, proxy_port).read_token
   end
 end

@@ -26,9 +26,13 @@ define packagecloud::repo(
   $metadata_expire = 300,
   $server_address = 'https://packagecloud.io',
   $always_update_cache = true,
+  $proxy_host = undef,
+  $proxy_port = undef,
 ) {
   validate_string($type)
   validate_string($master_token)
+  validate_string($proxy_host)
+  validate_string($proxy_port)
 
   include ::packagecloud
 
@@ -41,11 +45,21 @@ define packagecloud::repo(
   $normalized_name = regsubst($repo_name, '\/', '_')
 
   if $master_token != undef {
-    $read_token = get_read_token($repo_name, $master_token, $server_address)
+    $read_token = get_read_token($repo_name, $master_token, $server_address, $proxy_host, $proxy_port)
     $base_url = build_base_url($read_token, $server_address)
   } else {
     $read_token = false
     $base_url = $server_address
+  }
+
+  if $proxy_host  {
+    if $proxy_port {
+      $proxy_env = ["https_proxy=https://${proxy_host}:${proxy_port}", "http_proxy=http://${proxy_host}:${proxy_port}"]
+    } else {
+      $proxy_env = ["https_proxy=https://${proxy_host}", "http_proxy=http://${proxy_host}"]
+    }
+  } else {
+    $proxy_env = []
   }
 
   case $type {
@@ -72,10 +86,11 @@ define packagecloud::repo(
           }
 
           exec { "apt_key_add_${normalized_name}":
-            command => "wget --auth-no-challenge -qO - ${base_url}/${repo_name}/gpgkey | apt-key add -",
-            path    => '/usr/bin/:/bin/',
-            unless  => "apt-key list | grep ${server_address}/${repo_name}",
-            require => File[$normalized_name],
+            command     => "wget --auth-no-challenge -qO - ${base_url}/${repo_name}/gpgkey | apt-key add -",
+            path        => '/usr/bin/:/bin/',
+            unless      => "apt-key list | grep ${server_address}/${repo_name}",
+            require     => File[$normalized_name],
+            environment => $proxy_env,
           }
 
           exec { "apt_get_update_${normalized_name}":
