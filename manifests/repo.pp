@@ -52,8 +52,8 @@ define packagecloud::repo(
     $base_url = $server_address
   }
 
-  if $proxy_host  {
-    if $proxy_port {
+  if $proxy_host != undef {
+    if $proxy_port != undef {
       $proxy_env = ["https_proxy=https://${proxy_host}:${proxy_port}", "http_proxy=http://${proxy_host}:${proxy_port}"]
     } else {
       $proxy_env = ["https_proxy=https://${proxy_host}", "http_proxy=http://${proxy_host}"]
