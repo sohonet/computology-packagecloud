@@ -94,7 +94,7 @@ module Packagecloud
     end
 
     def http(scheme, host, port, request)
-      if @proxy_host.nil?
+      if @proxy_host.nil? or @proxy_host.empty?
         http = Net::HTTP.new(host, port)
       else
         http = Net::HTTP.new(host, port, @proxy_host, @proxy_port)
