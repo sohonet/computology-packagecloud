@@ -22,110 +22,100 @@ require "uri"
 require 'net/http'
 require "net/https"
 
-module Packagecloud
-  class API
-    attr_reader :name
 
-    def initialize(name, master_token, server_address, os, dist, hostname)
-      @name         = name
-      @master_token = master_token
-      @os           = os
-      @dist         = dist
-      @hostname     = hostname
-      @base_url     = "https://packagecloud.io/install/repositories/"
 
-      if !server_address.nil?
-        @base_url = URI.join(server_address, "/install/repositories/").to_s
+
+Puppet::Functions.create_function(:'packagecloud::get_read_token') do
+
+  module Packagecloud
+    class API
+      attr_reader :name
+
+      def initialize(name, master_token, server_address, os, dist, hostname)
+        @name         = name
+        @master_token = master_token
+        @os           = os
+        @dist         = dist
+        @hostname     = hostname
+        @base_url     = "https://packagecloud.io/install/repositories/"
+
+        if !server_address.nil?
+          @base_url = URI.join(server_address, "/install/repositories/").to_s
+        end
+
+        @endpoint_params = {
+          :os   => os,
+          :dist => dist,
+          :name => hostname
+        }
       end
 
-      @endpoint_params = {
-        :os   => os,
-        :dist => dist,
-        :name => hostname
-      }
-    end
-
-    def repo_name
-      @name.gsub('/', '_')
-    end
-
-    def rpm_base_url
-      @rpm_base_url ||= master_rpm_base_url.dup.tap do |uri|
-        uri.user = read_token
-      end
-    end
-
-    def master_rpm_base_url
-      @master_rpm_base_url ||= URI(get(uri_for("rpm_base_url"), @endpoint_params).body.chomp)
-    end
-
-    def read_token
-      @read_token ||= post(uri_for("tokens.text"), @endpoint_params).body.chomp
-    end
-
-    def uri_for(resource)
-      URI.join(@base_url, "#{@name}/#{resource}").tap do |uri|
-        uri.user = @master_token
-      end
-    end
-
-    def get(uri, params)
-      uri.query = URI.respond_to?(:encode_www_form) ? URI.encode_www_form(params) : params.to_param
-      request   = Net::HTTP::Get.new(uri.request_uri)
-
-      if uri.user
-        request.basic_auth uri.user.to_s, uri.password.to_s
+      def repo_name
+        @name.gsub('/', '_')
       end
 
-      http(uri.host, uri.port, request)
-    end
-
-    def post(uri, params)
-      request = Net::HTTP::Post.new(uri.request_uri)
-      request.form_data = params
-
-      if uri.user
-        request.basic_auth uri.user.to_s, uri.password.to_s
+      def rpm_base_url
+        @rpm_base_url ||= master_rpm_base_url.dup.tap do |uri|
+          uri.user = read_token
+        end
       end
 
-      http(uri.scheme, uri.host, uri.port, request)
-    end
-
-    def http(scheme, host, port, request)
-      http = Net::HTTP.new(host, port)
-      if scheme == "https"
-        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-        http.use_ssl = true
-        store = OpenSSL::X509::Store.new
-        store.set_default_paths
-        http.cert_store = store
+      def master_rpm_base_url
+        @master_rpm_base_url ||= URI(get(uri_for("rpm_base_url"), @endpoint_params).body.chomp)
       end
 
-      case res = http.start { |http| http.request(request) }
-      when Net::HTTPSuccess, Net::HTTPRedirection
-        res
-      else
-        res.error!
+      def read_token
+        @read_token ||= post(uri_for("tokens.text"), @endpoint_params).body.chomp
+      end
+
+      def uri_for(resource)
+        URI.join(@base_url, "#{@name}/#{resource}").tap do |uri|
+          uri.user = @master_token
+        end
+      end
+
+      def get(uri, params)
+        uri.query = URI.respond_to?(:encode_www_form) ? URI.encode_www_form(params) : params.to_param
+        request   = Net::HTTP::Get.new(uri.request_uri)
+
+        if uri.user
+          request.basic_auth uri.user.to_s, uri.password.to_s
+        end
+
+        http(uri.host, uri.port, request)
+      end
+
+      def post(uri, params)
+        request = Net::HTTP::Post.new(uri.request_uri)
+        request.form_data = params
+
+        if uri.user
+          request.basic_auth uri.user.to_s, uri.password.to_s
+        end
+
+        http(uri.scheme, uri.host, uri.port, request)
+      end
+
+      def http(scheme, host, port, request)
+        http = Net::HTTP.new(host, port)
+        if scheme == "https"
+          http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+          http.use_ssl = true
+          store = OpenSSL::X509::Store.new
+          store.set_default_paths
+          http.cert_store = store
+        end
+
+        case res = http.start { |http| http.request(request) }
+        when Net::HTTPSuccess, Net::HTTPRedirection
+          res
+        else
+          res.error!
+        end
       end
     end
   end
-end
 
-# module Puppet::Parser::Functions
-#   newfunction(:get_read_token, :type => :rvalue) do |args|
-
-#     repo           = args[0]
-#     master_token   = args[1]
-#     server_address = args[2]
-#     os             = args[3]
-#     dist           = args[4]
-#     hostname       = args[5]
-
-#     Packagecloud::API.new(repo, master_token, server_address, os, dist, hostname).read_token
-#   end
-# end
-
-Puppet::Functions.create_function(:get_read_token) do
   def get_read_token(*arguments)
 
     repo           = arguments[0]
@@ -137,4 +127,5 @@ Puppet::Functions.create_function(:get_read_token) do
 
     Packagecloud::API.new(repo, master_token, server_address, os, dist, hostname).read_token
   end
+
 end
