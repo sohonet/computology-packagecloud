@@ -113,13 +113,13 @@ end
 
 module Puppet::Parser::Functions
   newfunction(:get_read_token, :type => :rvalue) do |args|
-    repo = args[0]
-    master_token = args[1]
-    server_address = args[2]
 
-    os = lookupvar('::operatingsystem').downcase
-    dist = lookupvar('::operatingsystemrelease')
-    hostname = lookupvar('::fqdn')
+    repo           = args[0]
+    master_token   = args[1]
+    server_address = args[2]
+    os             = args[3]
+    dist           = args[4]
+    hostname       = args[5]
 
     Packagecloud::API.new(repo, master_token, server_address, os, dist, hostname).read_token
   end

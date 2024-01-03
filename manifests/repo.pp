@@ -19,12 +19,12 @@
 #
 
 define packagecloud::repo(
-  $type = undef,
-  $fq_name = undef,
-  $master_token = undef,
-  $priority = undef,
-  $metadata_expire = 300,
-  $server_address = 'https://packagecloud.io',
+  $type                = undef,
+  $fq_name             = undef,
+  $master_token        = undef,
+  $priority            = undef,
+  $metadata_expire     = 300,
+  $server_address      = 'https://packagecloud.io',
   $always_update_cache = true,
 ) {
   validate_string($type)
@@ -41,7 +41,16 @@ define packagecloud::repo(
   $normalized_name = regsubst($repo_name, '\/', '_')
 
   if $master_token != undef {
-    $read_token = get_read_token($repo_name, $master_token, $server_address)
+
+    $read_token = get_read_token(
+      $repo_name,
+      $master_token,
+      $server_address,
+      $::operatingsystem,
+      $::operatingsystemrelease,
+      $::fqdn
+    )
+
     $base_url = build_base_url($read_token, $server_address)
   } else {
     $read_token = false
