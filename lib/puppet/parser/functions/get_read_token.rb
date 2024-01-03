@@ -111,15 +111,29 @@ module Packagecloud
   end
 end
 
-module Puppet::Parser::Functions
-  newfunction(:get_read_token, :type => :rvalue) do |args|
+# module Puppet::Parser::Functions
+#   newfunction(:get_read_token, :type => :rvalue) do |args|
 
-    repo           = args[0]
-    master_token   = args[1]
-    server_address = args[2]
-    os             = args[3]
-    dist           = args[4]
-    hostname       = args[5]
+#     repo           = args[0]
+#     master_token   = args[1]
+#     server_address = args[2]
+#     os             = args[3]
+#     dist           = args[4]
+#     hostname       = args[5]
+
+#     Packagecloud::API.new(repo, master_token, server_address, os, dist, hostname).read_token
+#   end
+# end
+
+Puppet::Functions.create_function(:get_read_token) do
+  def get_read_token(*arguments)
+
+    repo           = arguments[0]
+    master_token   = arguments[1]
+    server_address = arguments[2]
+    os             = arguments[3]
+    dist           = arguments[4]
+    hostname       = arguments[5]
 
     Packagecloud::API.new(repo, master_token, server_address, os, dist, hostname).read_token
   end
