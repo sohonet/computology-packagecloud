@@ -39,9 +39,10 @@ define packagecloud::repo (
   }
 
   $normalized_name = regsubst($repo_name, '\/', '_')
+  $osname = downcase($facts['os']['name'])
 
   if $master_token != undef {
-    $read_token = packagecloud::get_read_token($repo_name, $master_token, $server_address)
+    $read_token = packagecloud::get_read_token($server_address, $repo_name, $master_token, $osname, $facts['os']['distro']['codename'], $facts['networking']['fqdn'])
     $base_url = packagecloud::build_base_url($read_token, $server_address)
   } else {
     $read_token = false
@@ -56,12 +57,11 @@ define packagecloud::repo (
       }
     }
     'deb': {
-      $osname = downcase($facts['os']['name'])
       case $osname {
         'debian', 'ubuntu': {
           $component = 'main'
           $repo_url = "${base_url}/${repo_name}/${osname}"
-          $distribution =  $facts['os']['distro']['codename']
+          $distribution = $facts['os']['distro']['codename']
 
           file { $normalized_name:
             ensure  => file,
