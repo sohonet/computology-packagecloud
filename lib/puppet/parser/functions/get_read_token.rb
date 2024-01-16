@@ -22,9 +22,6 @@ require "uri"
 require 'net/http'
 require "net/https"
 
-
-
-
 Puppet::Functions.create_function(:'packagecloud::get_read_token') do
 
   module Packagecloud

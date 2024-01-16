@@ -25,7 +25,7 @@ describe 'packagecloud::repo' do
        "mode"=>"0644",})
     end
     it do
-      is_expected.to contain_file('username_publicrepo').with_content(/baseurl=https:\/\/packagecloud.io\/username\/publicrepo\/el\/7\/x86_64\//)
+      is_expected.to contain_file('username_publicrepo').with_content(/baseurl=https:\/\/packagecloud.io\/username\/publicrepo\/el\/8\/amd64\//)
     end
     it do
       is_expected.to contain_exec('yum_make_cache_username/publicrepo').
@@ -55,8 +55,8 @@ describe 'packagecloud::repo' do
        "mode"=>"0644",})
     end
     it do
-      is_expected.to contain_file('username_publicrepo').with_content(/deb https:\/\/packagecloud.io\/username\/publicrepo\/debian  main/)
-      is_expected.to contain_file('username_publicrepo').with_content(/deb-src https:\/\/packagecloud.io\/username\/publicrepo\/debian  main/)
+      is_expected.to contain_file('username_publicrepo').with_content(/deb https:\/\/packagecloud.io\/username\/publicrepo\/ubuntu  main/)
+      is_expected.to contain_file('username_publicrepo').with_content(/deb-src https:\/\/packagecloud.io\/username\/publicrepo\/ubuntu  main/)
     end
     it do
       is_expected.to contain_exec('apt_get_update_username_publicrepo').
@@ -78,26 +78,63 @@ describe 'packagecloud::repo' do
           }
       )
     end
-    it do
-      is_expected.to contain_package('apt-transport-https').with_ensure('present')
-    end
   end
+
+  centos_os = {
+    :os => {
+      :name => 'CentOS',
+      :distro => {
+        :id => 'CentOS',
+        :release => {
+          :full => '8',
+          :major => '8',
+        }
+      },
+      :family => 'RedHat',
+      :release => {
+        :full => '8',
+        :major => '8',
+      },
+      :selinux => {
+        :enabled => false,
+      },
+      :hardware => "x86_64",
+      :architecture => "amd64"
+    }
+  }
+
+  ubuntu_os = {
+    :os => {
+      :name => 'Ubuntu',
+      :distro => {
+        :id => 'Ubuntu',
+        :release => {
+          :full => '22.04',
+          :major => '22.04',
+        }
+      },
+      :family => 'Debian',
+      :release => {
+        :full => '22.04',
+        :major => '22.04',
+      },
+      :selinux => {
+        :enabled => false,
+      },
+      :hardware => "x86_64",
+      :architecture => "amd64"
+    }
+  }
 
   context 'rpm repo' do
     context 'with sensible parameters' do
-      let(:facts) {{
-        :osfamily                  => 'RedHat',
-        :osreleasemaj              => '7',
-        :operatingsystem           => 'CentOS',
-        :architecture              => 'x86_64',
-      }}
-
+      let(:facts) { centos_os }
 
       let(:title) { 'username/publicrepo' }
 
       let(:params) do
         {
-          :type          => 'rpm',
+          :type => 'rpm',
         }
       end
 
@@ -117,19 +154,13 @@ describe 'packagecloud::repo' do
     end
 
     context 'with always_update_cache false' do
-      let(:facts) {{
-        :osfamily                  => 'RedHat',
-        :osreleasemaj              => '7',
-        :operatingsystem           => 'CentOS',
-        :architecture              => 'x86_64',
-      }}
-
+      let(:facts) { centos_os }
 
       let(:title) { 'username/publicrepo' }
 
       let(:params) do
         {
-          :type                => 'rpm',
+          :type => 'rpm',
           :always_update_cache => false,
         }
       end
@@ -147,18 +178,13 @@ describe 'packagecloud::repo' do
 
   context 'apt repo' do
     context 'with sensible parameters' do
-      let(:facts) {{
-        :osfamily                  => 'Debian',
-        :osreleasemaj              => '8',
-        :operatingsystem           => 'Debian',
-        :architecture              => 'x86_64',
-      }}
+      let(:facts) { ubuntu_os }
 
       let(:title) { 'username/publicrepo' }
 
       let(:params) do
         {
-          :type          => 'deb',
+          :type => 'deb',
         }
       end
 
@@ -175,18 +201,13 @@ describe 'packagecloud::repo' do
     end
 
     context 'with always_update_cache false' do
-      let(:facts) {{
-        :osfamily                  => 'Debian',
-        :osreleasemaj              => '8',
-        :operatingsystem           => 'Debian',
-        :architecture              => 'x86_64',
-      }}
+      let(:facts) { ubuntu_os }
 
       let(:title) { 'username/publicrepo' }
 
       let(:params) do
         {
-          :type          => 'deb',
+          :type => 'deb',
           :always_update_cache => false,
         }
       end

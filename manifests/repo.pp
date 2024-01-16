@@ -18,7 +18,7 @@
 # limitations under the License.
 #
 
-define packagecloud::repo(
+define packagecloud::repo (
   $type                = undef,
   $fq_name             = undef,
   $master_token        = undef,
@@ -30,7 +30,7 @@ define packagecloud::repo(
   validate_string($type)
   validate_string($master_token)
 
-  include ::packagecloud
+  include packagecloud
 
   if $fq_name != undef {
     $repo_name = $fq_name
@@ -41,14 +41,13 @@ define packagecloud::repo(
   $normalized_name = regsubst($repo_name, '\/', '_')
 
   if $master_token != undef {
-
     $read_token = get_read_token(
       $repo_name,
       $master_token,
       $server_address,
-      $::operatingsystem,
-      $::operatingsystemrelease,
-      $::fqdn
+      $facts['os']['name'],
+      $facts['os']['release']['full'],
+      $facts['networking']['fqdn']
     )
 
     $base_url = build_base_url($read_token, $server_address)
@@ -59,19 +58,18 @@ define packagecloud::repo(
 
   case $type {
     'gem': {
-      packagecloud::gem_repo {"Gem Repo ${repo_name}":
+      packagecloud::gem_repo { "Gem Repo ${repo_name}":
         base_url  => $base_url,
         repo_name => $repo_name,
       }
     }
     'deb': {
-      $osname = downcase($::operatingsystem)
+      $osname = downcase($facts['os']['name'])
       case $osname {
         'debian', 'ubuntu': {
-
           $component = 'main'
           $repo_url = "${base_url}/${repo_name}/${osname}"
-          $distribution =  $::lsbdistcodename
+          $distribution = $facts['os']['distro']['codename']
 
           file { $normalized_name:
             ensure  => file,
@@ -88,29 +86,28 @@ define packagecloud::repo(
           }
 
           exec { "apt_get_update_${normalized_name}":
-            command =>  "apt-get update -o Dir::Etc::sourcelist=\"sources.list.d/${normalized_name}.list\" -o Dir::Etc::sourceparts=\"-\" -o APT::Get::List-Cleanup=\"0\"",
+            command => "apt-get update -o Dir::Etc::sourcelist=\"sources.list.d/${normalized_name}.list\" -o Dir::Etc::sourceparts=\"-\" -o APT::Get::List-Cleanup=\"0\"",
             path    => '/usr/bin/:/bin/',
             require => Exec["apt_key_add_${normalized_name}"],
           }
 
           unless $always_update_cache {
-            Exec["apt_get_update_${normalized_name}"]{
+            Exec["apt_get_update_${normalized_name}"] {
               subscribe   => File[$normalized_name],
               refreshonly => true,
             }
           }
         }
         default: {
-          fail("Sorry, ${::operatingsystem} isn't supported for apt repos at this time. Email support@packagecloud.io")
+          fail("Sorry, ${facts['os']['name']} isn't supported for apt repos at this time. Email support@packagecloud.io")
         }
       }
     }
     'rpm': {
-      case $::operatingsystem {
+      case $facts['os']['name'] {
         'RedHat', 'redhat', 'CentOS', 'centos', 'Amazon', 'Fedora', 'Scientific', 'OracleLinux', 'OEL': {
-
-          $majrel = $::osreleasemaj
-          if $::pygpgme_installed == 'false' {
+          $majrel = $facts['os']['release']['major']
+          if $facts['pygpgme_installed'] == 'false' {
             warning('The pygpgme package could not be installed. This means GPG verification is not possible for any RPM installed on your system. To fix this, add a repository with pygpgme. Usualy, the EPEL repository for your system will have this. More information: https://fedoraproject.org/wiki/EPEL#How_can_I_use_these_extra_packages.3F and https://github.com/stahnma/puppet-module-epel')
             $repo_gpgcheck = 0
           } else {
@@ -119,34 +116,34 @@ define packagecloud::repo(
 
           if $read_token {
             if $majrel == '5' {
-              $yum_repo_url = $::operatingsystem ? {
-                /(RedHat|redhat|CentOS|centos)/ => "${server_address}/priv/${read_token}/${repo_name}/el/5/${::architecture}/",
-                /(OracleLinux|OEL)/ => "${server_address}/priv/${read_token}/${repo_name}/ol/5/${::architecture}/",
-                'Scientific' => "${server_address}/priv/${read_token}/${repo_name}/scientific/5/${::architecture}/",
+              $yum_repo_url = $facts['os']['name'] ? {
+                /(RedHat|redhat|CentOS|centos)/ => "${server_address}/priv/${read_token}/${repo_name}/el/5/${facts['os']['architecture']}/",
+                /(OracleLinux|OEL)/ => "${server_address}/priv/${read_token}/${repo_name}/ol/5/${facts['os']['architecture']}/",
+                'Scientific' => "${server_address}/priv/${read_token}/${repo_name}/scientific/5/${facts['os']['architecture']}/",
               }
               $gpg_url = "${server_address}/priv/${read_token}/${repo_name}/gpgkey"
             } else {
-              $yum_repo_url = $::operatingsystem ? {
-                /(RedHat|redhat|CentOS|centos)/ => "${base_url}/${repo_name}/el/${majrel}/${::architecture}/",
-                /(OracleLinux|OEL)/ => "${base_url}/${repo_name}/ol/${majrel}/${::architecture}/",
-                'Scientific' => "${base_url}/${repo_name}/scientific/${majrel}/${::architecture}/",
+              $yum_repo_url = $facts['os']['name'] ? {
+                /(RedHat|redhat|CentOS|centos)/ => "${base_url}/${repo_name}/el/${majrel}/${facts['os']['architecture']}/",
+                /(OracleLinux|OEL)/ => "${base_url}/${repo_name}/ol/${majrel}/${facts['os']['architecture']}/",
+                'Scientific' => "${base_url}/${repo_name}/scientific/${majrel}/${facts['os']['architecture']}/",
               }
               $gpg_url = "${base_url}/${repo_name}/gpgkey"
             }
           } else {
-            $yum_repo_url = $::operatingsystem ? {
-              /(RedHat|redhat|CentOS|centos)/ => "${base_url}/${repo_name}/el/${majrel}/${::architecture}/",
-              /(OracleLinux|OEL)/ => "${base_url}/${repo_name}/ol/${majrel}/${::architecture}/",
-              'Scientific' => "${base_url}/${repo_name}/scientific/${majrel}/${::architecture}/",
+            $yum_repo_url = $facts['os']['name'] ? {
+              /(RedHat|redhat|CentOS|centos)/ => "${base_url}/${repo_name}/el/${majrel}/${facts['os']['architecture']}/",
+              /(OracleLinux|OEL)/ => "${base_url}/${repo_name}/ol/${majrel}/${facts['os']['architecture']}/",
+              'Scientific' => "${base_url}/${repo_name}/scientific/${majrel}/${facts['os']['architecture']}/",
             }
             $gpg_url = "${base_url}/${repo_name}/gpgkey"
           }
 
           $description = $normalized_name
-          $repo_url = $::operatingsystem ? {
+          $repo_url = $facts['os']['name'] ? {
             /(RedHat|redhat|CentOS|centos|Scientific|OracleLinux|OEL)/ => $yum_repo_url,
-            'Fedora' => "${base_url}/${repo_name}/fedora/${majrel}/${::architecture}/",
-            'Amazon' => "${base_url}/${repo_name}/el/6/${::architecture}",
+            'Fedora' => "${base_url}/${repo_name}/fedora/${majrel}/${facts['os']['architecture']}/",
+            'Amazon' => "${base_url}/${repo_name}/el/6/${facts['os']['architecture']}",
           }
 
           file { $normalized_name:
@@ -163,16 +160,15 @@ define packagecloud::repo(
           }
 
           unless $always_update_cache {
-            Exec["yum_make_cache_${repo_name}"]{
+            Exec["yum_make_cache_${repo_name}"] {
               subscribe   => File[$normalized_name],
               refreshonly => true,
             }
           }
-
         }
 
         default: {
-          fail("Sorry, ${::operatingsystem} isn't supported for yum repos at this time. Email support@packagecloud.io")
+          fail("Sorry, ${facts['os']['name']} isn't supported for yum repos at this time. Email support@packagecloud.io")
         }
       }
     }
@@ -180,5 +176,4 @@ define packagecloud::repo(
       fail("Sorry, ${type} isn't a supported repository type in this module right now. Email support@packagecloud.io")
     }
   }
-
 }

@@ -4,12 +4,7 @@ group :test do
   if puppetversion = ENV['PUPPET_GEM_VERSION']
     gem 'puppet', puppetversion, :require => false
   else
-    gem 'puppet', ENV['PUPPET_VERSION'] || '~> 3.8.0'
-  end
-
-  # rspec must be v2 for ruby 1.8.7
-  if RUBY_VERSION >= '1.8.7' and RUBY_VERSION < '1.9'
-    gem 'rspec', '~> 2.0'
+    gem 'puppet', ENV['PUPPET_VERSION'] || '~> 7'
   end
 
   gem 'rake'
@@ -32,10 +27,11 @@ group :system_tests do
   gem 'librarian-puppet'
   gem 'test-kitchen'
   gem 'serverspec'
-  gem 'busser-serverspec'
   gem 'busser'
   gem 'psych'
   gem 'kitchen-vagrant'
   gem 'kitchen-puppet'
   gem 'vagrant-wrapper'
 end
+
+gem "rspec-puppet-facts", "~> 2.0"
