@@ -19,6 +19,13 @@ Puppet::Functions.create_function(:'packagecloud::get_read_token') do
     request.basic_auth(master_token, '')
     form_data = [['os', osname],['dist', distname],['name', hostname]]
     request.set_form(form_data, 'multipart/form-data')
-    https.request(request).body.chomp
+    response = https.request(request)
+
+    case response
+    when Net::HTTPSuccess, Net::HTTPRedirection
+      response.body.chomp
+    else
+      response.error!
+    end
   end
 end
