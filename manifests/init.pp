@@ -18,25 +18,25 @@
 # limitations under the License.
 #
 
-class packagecloud() {
-    case $::operatingsystem {
-      'debian',
-      'ubuntu': {
-        ensure_packages('apt-transport-https')
-      }
-      'RedHat',
-      'redhat',
-      'CentOS',
-      'centos',
-      'Amazon',
-      'Fedora',
-      'Scientific',
-      'OracleLinux',
-      'OEL': {
-        ensure_packages('pygpgme')
-      }
-      default: {
-        fail("Sorry, ${::operatingsystem} isn't supported. Email support@packagecloud.io for help.")
-      }
+class packagecloud () {
+  case $facts['os']['name'] {
+    'debian',
+    'ubuntu': {
+      ensure_packages('apt-transport-https')
     }
+    'RedHat',
+    'redhat',
+    'CentOS',
+    'centos',
+    'Amazon',
+    'Fedora',
+    'Scientific',
+    'OracleLinux',
+    'OEL': {
+      ensure_packages('pygpgme')
+    }
+    default: {
+      fail("Sorry, ${facts['os']['name']} isn't supported. Email support@packagecloud.io for help.")
+    }
+  }
 }
