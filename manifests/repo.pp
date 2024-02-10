@@ -19,17 +19,14 @@
 #
 
 define packagecloud::repo (
-  $type = undef,
+  Optional[String] $type = undef,
   $fq_name = undef,
-  $master_token = undef,
+  Optional[String] $master_token = undef,
   $priority = undef,
   $metadata_expire = 300,
   $server_address = 'https://packagecloud.io',
   $always_update_cache = true,
 ) {
-  validate_string($type)
-  validate_string($master_token)
-
   include packagecloud
 
   if $fq_name != undef {
