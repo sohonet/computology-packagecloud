@@ -33,6 +33,7 @@ describe 'packagecloud::repo' do
       :name => 'Ubuntu',
       :distro => {
         :id => 'Ubuntu',
+        :codename => 'jammy',
         :release => {
           :full => '22.04',
           :major => '22.04',
@@ -101,8 +102,8 @@ describe 'packagecloud::repo' do
        "mode"=>"0644",})
     end
     it do
-      is_expected.to contain_file('username_publicrepo').with_content(/deb https:\/\/packagecloud.io\/username\/publicrepo\/ubuntu  main/)
-      is_expected.to contain_file('username_publicrepo').with_content(/deb-src https:\/\/packagecloud.io\/username\/publicrepo\/ubuntu  main/)
+      is_expected.to contain_file('username_publicrepo').with_content(/deb https:\/\/packagecloud.io\/username\/publicrepo\/ubuntu jammy main/)
+      is_expected.to contain_file('username_publicrepo').with_content(/deb-src https:\/\/packagecloud.io\/username\/publicrepo\/ubuntu jammy main/)
     end
     it do
       is_expected.to contain_exec('apt_get_update_username_publicrepo').
@@ -118,7 +119,7 @@ describe 'packagecloud::repo' do
       is_expected.to contain_exec('apt_key_add_username_publicrepo').
         with(
           {
-            "command" => 'wget --auth-no-challenge -qO - https://packagecloud.io/username/publicrepo/gpgkey | apt-key add -',
+            "command" => 'wget --auth-no-challenge -qO- https://packagecloud.io/username/publicrepo/gpgkey > /etc/apt/keyrings/packagecloud-username_publicrepo.asc',
             "path"    => "/usr/bin/:/bin/",
             "require" => "File[username_publicrepo]",
           }
@@ -225,6 +226,47 @@ describe 'packagecloud::repo' do
       it do
         is_expected.to contain_exec('apt_get_update_username_publicrepo').
                with_refreshonly(true)
+      end
+    end
+
+    context 'with master_token' do
+      let(:facts) do
+        ubuntu_os.merge(
+          :networking => { :fqdn => 'test.example.com' }
+        )
+      end
+
+      let(:title) { 'username/publicrepo' }
+
+      let(:params) do
+        {
+          :type => 'deb',
+          :always_update_cache => false,
+          :master_token => '1234abcde',
+          :server_address => 'https://example.org',
+        }
+      end
+
+      before(:each) do
+        mock_response = Net::HTTPOK.new('1.1', '200', 'OK')
+        allow(mock_response).to receive(:body).and_return("poppycock\n")
+
+        mock_http = instance_double(Net::HTTP)
+        allow(mock_http).to receive(:use_ssl=)
+        allow(mock_http).to receive(:request).and_return(mock_response)
+
+        allow(Net::HTTP).to receive(:new).and_return(mock_http)
+      end
+
+      it do
+        is_expected.to contain_file('auth_username_publicrepo').with_show_diff(false).with_content( <<~EOF
+          # This file is managed by puppet
+          # module 'packagecloud'
+
+          machine https://example.org
+          login poppycock
+          EOF
+        )
       end
     end
   end

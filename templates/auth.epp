@@ -1,0 +1,9 @@
+<%- |
+  String[1] $machine,
+  Sensitive[String[1]] $login,
+| -%>
+# This file is managed by puppet
+# module 'packagecloud'
+
+machine <%= $machine %>
+login <%= $login.unwrap() %>

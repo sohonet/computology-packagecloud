@@ -39,8 +39,9 @@ define packagecloud::repo (
   $osname = downcase($facts['os']['name'])
 
   if $master_token != undef {
-    $read_token = packagecloud::get_read_token($server_address, $repo_name, $master_token, $osname, $facts['os']['distro']['codename'], $facts['networking']['fqdn'])
-    $base_url = packagecloud::build_base_url($read_token, $server_address)
+    $raw_read_token = packagecloud::get_read_token($server_address, $repo_name, $master_token, $osname, $facts['os']['distro']['codename'], $facts['networking']['fqdn'])
+    $base_url = packagecloud::build_base_url($raw_read_token, $server_address)
+    $read_token = Sensitive($raw_read_token)
   } else {
     $read_token = false
     $base_url = $server_address
@@ -67,10 +68,25 @@ define packagecloud::repo (
             content => template('packagecloud/apt.erb'),
           }
 
+          if $read_token {
+            file { "auth_${normalized_name}":
+              ensure    => file,
+              path      => "/etc/apt/auth.conf.d/packagecloud-${normalized_name}",
+              owner     => root,
+              group     => root,
+              mode      => '0400',
+              show_diff => false,
+              content   => epp('packagecloud/auth.epp', {
+                  machine => $server_address,
+                  login   => $read_token,
+              }),
+            }
+          }
+
           exec { "apt_key_add_${normalized_name}":
-            command => "wget --auth-no-challenge -qO - ${base_url}/${repo_name}/gpgkey | apt-key add -",
+            command => "wget --auth-no-challenge -qO- ${base_url}/${repo_name}/gpgkey > /etc/apt/keyrings/packagecloud-${normalized_name}.asc",
             path    => '/usr/bin/:/bin/',
-            unless  => "apt-key list | grep ${server_address}/${repo_name}",
+            creates => "/etc/apt/keyrings/packagecloud-${normalized_name}.asc",
             require => File[$normalized_name],
           }
 
