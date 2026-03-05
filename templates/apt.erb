@@ -1,5 +1,5 @@
 # This file is managed by puppet
 # module 'packagecloud'
 
-deb <%= @repo_url %> <%= @distribution %> <%= @component %>
-deb-src <%= @repo_url %> <%= @distribution %> <%= @component %>
+deb [signed-by=/etc/apt/keyrings/packagecloud-<%= @normalized_name %>.asc] <%= @repo_url %> <%= @distribution %> <%= @component %>
+deb-src [signed-by=/etc/apt/keyrings/packagecloud-<%= @normalized_name %>.asc] <%= @repo_url %> <%= @distribution %> <%= @component %>

@@ -42,9 +42,11 @@ define packagecloud::repo (
     $raw_read_token = packagecloud::get_read_token($server_address, $repo_name, $master_token, $osname, $facts['os']['distro']['codename'], $facts['networking']['fqdn'])
     $base_url = packagecloud::build_base_url($raw_read_token, $server_address)
     $read_token = Sensitive($raw_read_token)
+    $gpg_key_content = Deferred('packagecloud::fetch_gpg_key', [$server_address, $repo_name, $raw_read_token, "/etc/apt/keyrings/packagecloud-${normalized_name}.asc"])
   } else {
     $read_token = false
     $base_url = $server_address
+    $gpg_key_content = packagecloud::fetch_gpg_key($base_url, $repo_name, $read_token, "/etc/apt/keyrings/packagecloud-${normalized_name}.asc")
   }
 
   case $type {
@@ -83,17 +85,20 @@ define packagecloud::repo (
             }
           }
 
-          exec { "apt_key_add_${normalized_name}":
-            command => "wget --auth-no-challenge -qO- ${base_url}/${repo_name}/gpgkey > /etc/apt/keyrings/packagecloud-${normalized_name}.asc",
-            path    => '/usr/bin/:/bin/',
-            creates => "/etc/apt/keyrings/packagecloud-${normalized_name}.asc",
+          file { "gpg_key_${normalized_name}":
+            ensure  => file,
+            path    => "/etc/apt/keyrings/packagecloud-${normalized_name}.asc",
+            owner   => root,
+            group   => root,
+            mode    => '0644',
+            content => $gpg_key_content,
             require => File[$normalized_name],
           }
 
           exec { "apt_get_update_${normalized_name}":
             command => "apt-get update -o Dir::Etc::sourcelist=\"sources.list.d/${normalized_name}.list\" -o Dir::Etc::sourceparts=\"-\" -o APT::Get::List-Cleanup=\"0\"",
             path    => '/usr/bin/:/bin/',
-            require => Exec["apt_key_add_${normalized_name}"],
+            require => File["gpg_key_${normalized_name}"],
           }
 
           unless $always_update_cache {

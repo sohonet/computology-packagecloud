@@ -52,6 +52,20 @@ describe 'packagecloud::repo' do
     }
   }
 
+    before(:each) do
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?).with(%r{/etc/apt/keyrings/}).and_return(false)
+
+      mock_gpg_response = Net::HTTPOK.new('1.1', '200', 'OK')
+      allow(mock_gpg_response).to receive(:body).and_return("-----BEGIN PGP PUBLIC KEY BLOCK-----\nfake-gpg-key\n-----END PGP PUBLIC KEY BLOCK-----\n")
+
+      mock_http = instance_double(Net::HTTP)
+      allow(mock_http).to receive(:use_ssl=)
+      allow(mock_http).to receive(:request).and_return(mock_gpg_response)
+
+      allow(Net::HTTP).to receive(:new).and_return(mock_http)
+    end
+
   # add these two lines in a single test block to enable puppet and hiera debug mode
   # Puppet::Util::Log.level = :debug
   # Puppet::Util::Log.newdestination(:console)
@@ -102,8 +116,8 @@ describe 'packagecloud::repo' do
        "mode"=>"0644",})
     end
     it do
-      is_expected.to contain_file('username_publicrepo').with_content(/deb https:\/\/packagecloud.io\/username\/publicrepo\/ubuntu jammy main/)
-      is_expected.to contain_file('username_publicrepo').with_content(/deb-src https:\/\/packagecloud.io\/username\/publicrepo\/ubuntu jammy main/)
+      is_expected.to contain_file('username_publicrepo').with_content(Regexp.new('deb \[signed-by=/etc/apt/keyrings/packagecloud-username_publicrepo.asc\] https://packagecloud.io/username/publicrepo/ubuntu jammy main'))
+      is_expected.to contain_file('username_publicrepo').with_content(Regexp.new('deb-src \[signed-by=/etc/apt/keyrings/packagecloud-username_publicrepo.asc\] https://packagecloud.io/username/publicrepo/ubuntu jammy main'))
     end
     it do
       is_expected.to contain_exec('apt_get_update_username_publicrepo').
@@ -111,16 +125,18 @@ describe 'packagecloud::repo' do
           {
             "command" => 'apt-get update -o Dir::Etc::sourcelist="sources.list.d/username_publicrepo.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"',
             "path"    => "/usr/bin/:/bin/",
-            "require" => "Exec[apt_key_add_username_publicrepo]",
+            "require" => "File[gpg_key_username_publicrepo]",
           }
       )
     end
     it do
-      is_expected.to contain_exec('apt_key_add_username_publicrepo').
+      is_expected.to contain_file('gpg_key_username_publicrepo').
         with(
           {
-            "command" => 'wget --auth-no-challenge -qO- https://packagecloud.io/username/publicrepo/gpgkey > /etc/apt/keyrings/packagecloud-username_publicrepo.asc',
-            "path"    => "/usr/bin/:/bin/",
+            "path"    => "/etc/apt/keyrings/packagecloud-username_publicrepo.asc",
+            "owner"   => "root",
+            "group"   => "root",
+            "mode"    => "0644",
             "require" => "File[username_publicrepo]",
           }
       )
