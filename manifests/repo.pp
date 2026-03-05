@@ -58,7 +58,7 @@ define packagecloud::repo (
       case $osname {
         'debian', 'ubuntu': {
           $component = 'main'
-          $repo_url = "${base_url}/${repo_name}/${osname}"
+          $repo_url = "${server_address}/${repo_name}/${osname}"
           $distribution = $facts['os']['distro']['codename']
 
           file { $normalized_name:
