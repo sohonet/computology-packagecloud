@@ -29,7 +29,8 @@ Puppet::Functions.create_function(:'packagecloud::fetch_gpg_key') do
       when Net::HTTPRedirection
         url = URI(response['location'])
       else
-        response.error!
+        Puppet.warning("Packagecloud: Unable to retrieve GPG key for repo #{repo_name}: #{response.code} #{response.message}")
+        return ''
       end
     end
     raise "Too many redirects fetching GPG key from #{server_address}/#{repo_name}/gpgkey"
